@@ -1,41 +1,66 @@
-# EnumFromPgConstraint
+## EnumFromPgConstraint
 
-Welcome to your new gem! In this directory, you'll find the files you need to be able to package up your Ruby library into a gem. Put your Ruby code in the file `lib/enum_from_pg_constraint`. To experiment with that code, run `bin/console` for an interactive prompt.
+Derive a Rails [enum](http://edgeapi.rubyonrails.org/classes/ActiveRecord/Enum.html) from an existing PostgreSQL constraint.
 
-TODO: Delete this and the text above, and describe your gem
+## Usage:
 
-## Installation
-
-Add this line to your application's Gemfile:
+Given a migration to create table `Thing` with a PostgreSQL constraint:
 
 ```ruby
-gem 'enum_from_pg_constraint'
+class CreateThing < ActiveRecord::Migration
+  def up
+    create_table :things do |t|
+      t.string :name
+      t.string :status, null: false, default: 'pending'
+      t.timestamps null: false
+    end
+
+    execute <<-SQL.strip_heredoc
+      ALTER TABLE things
+      ADD CONSTRAINT allowed_statuses
+      CHECK (status IN (
+        'pending', -- thing not yet attempted
+        'success', -- thing succeeded
+        'failure'  -- thing failed
+      ));
+    SQL
+  end
+
+  def down
+    drop_table :things
+  end
+end
 ```
 
-And then execute:
+Add the constraint to your Model:
 
-    $ bundle
+```ruby
+class Thing < ActiveRecord::Base
+  include EnumFromPgConstraint
 
-Or install it yourself as:
+  enum_from_pg_constraint :status
+end
+```
 
-    $ gem install enum_from_pg_constraint
+```ruby
+$ rails c
+> Thing.statuses
+=> {"pending"=>"pending", "success"=>"success", "failure"=>"failure"}
 
-## Usage
-
-TODO: Write usage instructions here
-
-## Development
-
-After checking out the repo, run `bin/setup` to install dependencies. Then, run `rake spec` to run the tests. You can also run `bin/console` for an interactive prompt that will allow you to experiment.
-
-To install this gem onto your local machine, run `bundle exec rake install`. To release a new version, update the version number in `version.rb`, and then run `bundle exec rake release`, which will create a git tag for the version, push git commits and tags, and push the `.gem` file to [rubygems.org](https://rubygems.org).
+> Thing.create(name: 'Hello World!')
+> Thing.pending
+=> [#<Thing:0x007fec93d6b5f0
+  id: 1,
+  name: 'Hello World!'
+  status: "pending",
+  created_at: Sun, 31 Jan 2016 18:53:25 PST -08:00,
+  updated_at: Sun, 31 Jan 2016 18:53:25 PST -08:00>]
+```
 
 ## Contributing
 
-Bug reports and pull requests are welcome on GitHub at https://github.com/[USERNAME]/enum_from_pg_constraint. This project is intended to be a safe, welcoming space for collaboration, and contributors are expected to adhere to the [Contributor Covenant](http://contributor-covenant.org) code of conduct.
-
+Bug reports and pull requests are welcome on GitHub at https://github.com/somlor/enum_from_pg_constraint. This project is intended to be a safe, welcoming space for collaboration, and contributors are expected to adhere to the [Contributor Covenant](http://contributor-covenant.org) code of conduct.
 
 ## License
 
 The gem is available as open source under the terms of the [MIT License](http://opensource.org/licenses/MIT).
-
