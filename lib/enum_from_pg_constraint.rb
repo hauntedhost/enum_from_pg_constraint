@@ -8,7 +8,7 @@ module EnumFromPgConstraint
 
   class_methods do
     def enum_from_pg_constraint(enum_name, constraint_name = nil)
-      unless (adapter_name = ActiveRecord::Base.connection.adapter_name) == 'PostgreSQL'
+      unless (adapter_name = connection.adapter_name) == 'PostgreSQL'
         raise EnumFromPgConstraintError,
           "unexpected database adapter. 'PostgreSQL' required, found: #{adapter_name.inspect}"
       end
@@ -23,7 +23,7 @@ module EnumFromPgConstraint
         AND conname = '#{constraint_name}';
       SQL
 
-      result = ActiveRecord::Base.connection.execute(sql)
+      result = connection.execute(sql)
       constraint = result.entries.first[constraint_name]
       values = constraint.scan(/'([^']*)'/).flatten
 
